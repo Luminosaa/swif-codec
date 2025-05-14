@@ -54,7 +54,7 @@ We simulate packet erasures on the UDP connection. See simple_client_server.h
 header file to control the loss rate (BTW, make sure it is compatible with the
 code rate). By default:
 #define CODE_RATE	0.667		/* k/n = 2/3 means we add 50% of repair symbols */
-#define LOSS_RATE	0.30		/* we consider 30% of packet losses... It assumes
+#define loss_rate	0.30		/* we consider 30% of packet losses... It assumes
 					   there's no additional loss during UDP transmissions */
 
 However, since this is a UDP connection, since the server transmits at full

@@ -45,7 +45,7 @@
 #define SYMBOL_SIZE	16		/* symbol size, in bytes (must be multiple of 4 in this simple example) */
 #define	DEFAULT_EW_SIZE	10		/* default encoding window size assumed constant */
 #define CODE_RATE	0.667		/* k/n = 2/3 means we add 50% of repair symbols */
-#define VERBOSITY	1		/* Define the verbosity level:
+#define VERBOSITY	0		/* Define the verbosity level:
 					 *	0 : no trace
 					 *	1 : main traces
 					 *	2 : full traces with packet dumps */

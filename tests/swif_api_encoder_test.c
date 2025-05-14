@@ -34,14 +34,8 @@ void store_args(int count, ...) {
 void check_correct_args(int count, ...) {
     va_list list;
     va_start(list, count);
-    char str[250];
     for (int i = 0 ; i < count ; i++) {
         CU_ASSERT_EQUAL(va_arg(list, void *), func_args[i]);
-//        if (va_arg(list, void *) != func_args[i]) {
-//
-//            sprintf(str, "the function has been called with the wrong argument at index %d", i);
-//            CU_FAIL(the function has been called with the wrong argument at index %d);
-//        }
     }
     va_end(list);
 }
@@ -86,9 +80,9 @@ swif_status_t   dummy_encoder_get_parameters  (
 }
 
 
-swif_status_t   dummy_build_repair_symbol (
-        swif_encoder_t* generic_encoder,
-        void*           new_buf)
+swif_status_t dummy_build_repair_symbol(
+    swif_encoder_t* generic_encoder,
+    void** new_buf) // Change `void*` to `void**`
 {
     store_args(2, generic_encoder, new_buf);
     build_repair_symbol = true;
@@ -195,7 +189,7 @@ int init_test(void)
     set_coding_coefs_tab = false;
     get_coding_coefs_tab = false;
     generate_coding_coefs = false;
-
+    return 0;
 }
 
 

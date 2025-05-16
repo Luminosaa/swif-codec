@@ -32,7 +32,7 @@ for window_size in "${window_sizes[@]}"; do
         sleep 0.5
 
         # Start the server with the current loss rate and window size
-        ./applis/simple_client_server/simple_server $loss_rate $window_size 0.3 > /dev/null 2> /dev/null &
+        ./applis/simple_client_server/simple_server $loss_rate $window_size 0.33 > /dev/null 2> /dev/null &
 
         # Wait for the client to finish
         wait $client_pid

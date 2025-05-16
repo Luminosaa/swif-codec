@@ -7,3 +7,5 @@
 applis/simple_client_server/simple_client
 applis/simple_client_server/simple_server
 
+plot_results.py
+results.csv

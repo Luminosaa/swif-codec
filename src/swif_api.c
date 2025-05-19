@@ -345,17 +345,19 @@ swif_status_t   swif_decoder_set_coding_coefs_tab (
 swif_status_t   swif_encoder_generate_coding_coefs (
                                 swif_encoder_t* enc,
                                 uint32_t        key,
+                                uint8_t         dt,
                                 uint32_t        add_param)
 {
-    return (*enc->generate_coding_coefs)(enc, key, add_param);
+    return (*enc->generate_coding_coefs)(enc, key, dt, add_param);
 }
 
 swif_status_t   swif_decoder_generate_coding_coefs (
                                 swif_decoder_t* dec,
                                 uint32_t        key,
+                                uint8_t         dt,
                                 uint32_t        add_param)
 {
-    return (*dec->generate_coding_coefs)(dec, key, add_param);
+    return (*dec->generate_coding_coefs)(dec, key, dt, add_param);
 }
 
 

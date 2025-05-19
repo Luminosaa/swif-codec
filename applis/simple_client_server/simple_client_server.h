@@ -87,5 +87,8 @@ typedef struct {
 	uint16_t	repair_key;	/* only meaningful in case of a repair */
 	uint16_t	nss;		/* only meaningful in case of a repair */
 	esi_t		esi;		/* esi of a source symbol, or esi of the first source symbol of the encoding window in case of a repair */
-} fpi_t;
+} repair_fpi_t;
 
+typedef struct {
+	esi_t esi;
+} source_fpi_t;

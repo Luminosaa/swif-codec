@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
     char *pkt_with_fpi =
         NULL; /* buffer containing a fixed size packet plus a header consisting only of the FPI */
     fec_oti_t fec_oti; /* FEC Object Transmission Information as sent to the client */
-    fpi_t *fpi;        /* header (FEC Payload Information) for source and repair symbols */
+    repair_fpi_t *fpi;        /* header (FEC Payload Information) for source and repair symbols */
     SOCKADDR_IN dst_host;
     uint32_t ret = -1;
 
@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
     }
     /* allocate a buffer where we'll copy each symbol plus its simplified FPI.
      * This buffer will be reused during the whole session */
-    if((pkt_with_fpi = malloc(sizeof(fpi_t) + SYMBOL_SIZE)) == NULL)
+    if((pkt_with_fpi = malloc(sizeof(repair_fpi_t) + SYMBOL_SIZE)) == NULL)
     {
         fprintf(stderr, "no memory (malloc failed for pkt_with_fpi)\n");
         ret = -1;
@@ -216,12 +216,12 @@ int main(int argc, char *argv[])
             return ret;
         }
         /* prepend a header in network byte order */
-        fpi = (fpi_t *)pkt_with_fpi;
+        fpi = (repair_fpi_t *)pkt_with_fpi;
         fpi->is_source = htons(1);
         fpi->repair_key = htons(0); /* only meaningful in case of a repair */
         fpi->nss = htons(0);        /* only meaningful in case of a repair */
         fpi->esi = htonl(esi);
-        memcpy(pkt_with_fpi + sizeof(fpi_t), enc_symbols_tab[idx], SYMBOL_SIZE);
+        memcpy(pkt_with_fpi + sizeof(repair_fpi_t), enc_symbols_tab[idx], SYMBOL_SIZE);
         if(should_be_lost(loss_rate))
         {
             printf(" => src symbol %u is lost\n", esi);
@@ -237,7 +237,7 @@ int main(int argc, char *argv[])
             {
                 printf(" => sending src symbol %u\n", esi);
             }
-            if((ret = sendto(so, pkt_with_fpi, sizeof(fpi_t) + SYMBOL_SIZE, 0,
+            if((ret = sendto(so, pkt_with_fpi, sizeof(repair_fpi_t) + SYMBOL_SIZE, 0,
                              (SOCKADDR *)&dst_host, sizeof(dst_host))) == SOCKET_ERROR)
             {
                 fprintf(stderr, "Error, sendto() failed!\n");
@@ -258,7 +258,7 @@ int main(int argc, char *argv[])
             esi_t last;
             uint32_t nss;
             /* the index is the repair_key */
-            if(swif_encoder_generate_coding_coefs(ses, idx, 0) != SWIF_STATUS_OK)
+            if(swif_encoder_generate_coding_coefs(ses, idx, 15, 0) != SWIF_STATUS_OK)
             {
                 fprintf(stderr,
                         "Error, swif_decoder_generate_coding_coefs() failed for repair_key=%u\n",
@@ -299,12 +299,12 @@ int main(int argc, char *argv[])
                 cleanup(so, ses, enc_symbols_tab, tot_enc, pkt_with_fpi);
                 return ret;
             }
-            fpi = (fpi_t *)pkt_with_fpi;
+            fpi = (repair_fpi_t *)pkt_with_fpi;
             fpi->is_source = htons(0);
             fpi->repair_key = htons(idx);
             fpi->nss = htons(nss);
             fpi->esi = htonl(first);
-            memcpy(pkt_with_fpi + sizeof(fpi_t), enc_symbols_tab[idx], SYMBOL_SIZE);
+            memcpy(pkt_with_fpi + sizeof(repair_fpi_t), enc_symbols_tab[idx], SYMBOL_SIZE);
             if(should_be_lost(loss_rate))
             {
                 printf(" => repair symbol %u is lost\n", esi);
@@ -320,7 +320,7 @@ int main(int argc, char *argv[])
                 {
                     printf(" => sending repair symbol %u\n", first);
                 }
-                if((ret = sendto(so, pkt_with_fpi, sizeof(fpi_t) + SYMBOL_SIZE, 0,
+                if((ret = sendto(so, pkt_with_fpi, sizeof(repair_fpi_t) + SYMBOL_SIZE, 0,
                                  (SOCKADDR *)&dst_host, sizeof(dst_host))) == SOCKET_ERROR)
                 {
                     fprintf(stderr, "Error, sendto() failed!\n");

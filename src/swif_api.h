@@ -134,7 +134,7 @@ typedef struct swif_encoder {
 	swif_status_t   (*set_coding_coefs_tab) (
 		struct swif_encoder*, void*, uint32_t);
 	swif_status_t   (*generate_coding_coefs) (
-		struct swif_encoder*, uint32_t, uint32_t);
+		struct swif_encoder*, uint32_t, uint8_t, uint32_t);
 	swif_status_t   (*get_coding_coefs_tab) (
 		struct swif_encoder*, void**, uint32_t*);
 } swif_encoder_t;
@@ -302,7 +302,7 @@ typedef struct swif_decoder {
 	swif_status_t   (*set_coding_coefs_tab) (
 		struct swif_decoder*, void*, uint32_t);
 	swif_status_t   (*generate_coding_coefs) (
-		struct swif_decoder*, uint32_t, uint32_t);
+		struct swif_decoder*, uint32_t, uint8_t, uint32_t);
 } swif_decoder_t;
 
 
@@ -665,11 +665,13 @@ swif_status_t   swif_decoder_set_coding_coefs_tab (
 swif_status_t   swif_encoder_generate_coding_coefs (
                                 swif_encoder_t* enc,
                                 uint32_t        key,
+                                uint8_t         dt,
                                 uint32_t        add_param);
 
 swif_status_t   swif_decoder_generate_coding_coefs (
                                 swif_decoder_t* dec,
                                 uint32_t        key,
+                                uint8_t         dt,
                                 uint32_t        add_param);
 
 

@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
     char *pkt_with_fpi =
         NULL; /* buffer containing a fixed size packet plus a header consisting only of the FPI */
     fec_oti_t *fec_oti = NULL; /* FEC Object Transmission Information as sent to the client */
-    fpi_t *fpi;                /* header (FEC Payload Information) for source and repair symbols */
+    repair_fpi_t *fpi;                /* header (FEC Payload Information) for source and repair symbols */
     uint32_t ret = -1;
     int32_t len;             /* len of the received packet */
     uint32_t n_received = 0; /* number of symbols (source or repair) received so far */
@@ -154,7 +154,7 @@ int main(int argc, char *argv[])
         goto end;
     }
     printf("Reception/decoding in progress...\n");
-    len = SYMBOL_SIZE + sizeof(fpi_t); /* size of the expected packet */
+    len = SYMBOL_SIZE + sizeof(repair_fpi_t); /* size of the expected packet */
     /*
      * submit each fresh symbol to the library ASAP, upon reception.
      */
@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
 
         /* OK, new packet received... and we know it'a fresh packet (no duplication here) */
         n_received++;
-        fpi = (fpi_t *)pkt_with_fpi;
+        fpi = (repair_fpi_t *)pkt_with_fpi;
         is_source = ntohs(fpi->is_source);
         repair_key = ntohs(fpi->repair_key);
         nss = ntohs(fpi->nss);
@@ -192,7 +192,7 @@ int main(int argc, char *argv[])
         if(is_source)
         {
             /* remember that we received this source symbol */
-            src_symbols_tab[esi] = pkt_with_fpi + sizeof(fpi_t); /* remember */
+            src_symbols_tab[esi] = pkt_with_fpi + sizeof(repair_fpi_t); /* remember */
             src_symbols_status_tab[esi] = SRC_SYMBOL_STATUS_RECEIVED;
             src_symbols_allocated[esi] = true;
             if(swif_decoder_decode_with_new_source_symbol(ses, src_symbols_tab[esi], esi) !=
@@ -206,7 +206,7 @@ int main(int argc, char *argv[])
         else
         {
             /* remember that we received this repair symbol */
-            repair_symbols_tab[rep_idx] = pkt_with_fpi + sizeof(fpi_t); /* remember */
+            repair_symbols_tab[rep_idx] = pkt_with_fpi + sizeof(repair_fpi_t); /* remember */
 
             /* a bit more complex, it's a repair symbol: specify the coding window, generate the
              * coding coefficients, then submit the repair symbol  */
@@ -225,7 +225,7 @@ int main(int argc, char *argv[])
                     goto end;
                 }
             }
-            if(swif_decoder_generate_coding_coefs(ses, repair_key, 0) != SWIF_STATUS_OK)
+            if(swif_decoder_generate_coding_coefs(ses, repair_key, 15, 0) != SWIF_STATUS_OK)
             {
                 fprintf(stderr, "Error, swif_decoder_generate_coding_coefs() failed\n");
                 ret = -1;
@@ -241,7 +241,7 @@ int main(int argc, char *argv[])
             rep_idx++;
         }
         len = SYMBOL_SIZE +
-              sizeof(fpi_t); /* make sure len contains the size of the expected packet */
+              sizeof(repair_fpi_t); /* make sure len contains the size of the expected packet */
     }
     /* print reception an   d decoding final statistics */
     uint32_t n_src_recvd = 0;   /* number source symbols received */
@@ -295,7 +295,7 @@ end:
             {
                 if(src_symbols_status_tab[esi] == SRC_SYMBOL_STATUS_RECEIVED)
                 {
-                    free((char *)src_symbols_tab[esi] - sizeof(fpi_t));
+                    free((char *)src_symbols_tab[esi] - sizeof(repair_fpi_t));
                 }
                 else if(src_symbols_status_tab[esi] == SRC_SYMBOL_STATUS_DECODED)
                 {
@@ -312,7 +312,7 @@ end:
             if(repair_symbols_tab[i])
             {
                 /* here the buffer starts sizeof(FPI) bytes before */
-                free((char *)repair_symbols_tab[i] - sizeof(fpi_t));
+                free((char *)repair_symbols_tab[i] - sizeof(repair_fpi_t));
             }
         }
         free(repair_symbols_tab);

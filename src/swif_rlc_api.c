@@ -403,7 +403,7 @@ swif_status_t swif_rlc_decoder_set_coding_coefs_tab(swif_decoder_t *dec,
  * swif_encoder_get_coding_coefs_tab().
  */
 swif_status_t
-swif_rlc_encoder_generate_coding_coefs(swif_encoder_t *enc, uint32_t key, uint32_t add_param)
+swif_rlc_encoder_generate_coding_coefs(swif_encoder_t *enc, uint32_t key, uint8_t dt, uint32_t add_param)
 {
     /* XXX: check why uint32_t key */
     DEBUG_PRINT("generate coding coefs: ");
@@ -424,13 +424,13 @@ swif_rlc_encoder_generate_coding_coefs(swif_encoder_t *enc, uint32_t key, uint32
     assert(rlc_enc->ew_ss_nb <= rlc_enc->max_coding_window_size);
     swif_rlc_generate_coding_coefficients((uint16_t)key, rlc_enc->cc_tab,
                                           rlc_enc->ew_ss_nb, /* upper bound: enc->max_window_size */
-                                          15 /* density dt [0-15] XXX dt=1*/, 8 /*=m - GF(2^^m) */);
+                                          dt /* density dt [0-15] XXX dt=1*/, 8 /*=m - GF(2^^m) */);
 
     return SWIF_STATUS_OK;
 }
 
 swif_status_t
-swif_rlc_decoder_generate_coding_coefs(swif_decoder_t *dec, uint32_t key, uint32_t add_param)
+swif_rlc_decoder_generate_coding_coefs(swif_decoder_t *dec, uint32_t key, uint8_t dt, uint32_t add_param)
 {
     // repair keys
     /* XXX: check why uint32_t key */
@@ -451,7 +451,7 @@ swif_rlc_decoder_generate_coding_coefs(swif_decoder_t *dec, uint32_t key, uint32
     assert(rlc_dec->nb_id <= rlc_dec->max_coding_window_size);
     swif_rlc_generate_coding_coefficients((uint16_t)key, rlc_dec->coef_tab,
                                           rlc_dec->nb_id, /* upper bound: enc->max_window_size */
-                                          15 /* density dt [0-15] XXX dt=1*/, 8 /*=m - GF(2^^m) */);
+                                          dt /* density dt [0-15] XXX dt=1*/, 8 /*=m - GF(2^^m) */);
     DEBUG_DUMP(rlc_dec->coef_tab, rlc_dec->nb_id);
     return SWIF_STATUS_OK;
 }

@@ -221,12 +221,14 @@ swif_status_t   swif_rlc_decoder_set_coding_coefs_tab (
 swif_status_t   swif_rlc_encoder_generate_coding_coefs (
                                 swif_encoder_t* enc,
                                 uint32_t        key,
+                                uint8_t        dt,
                                 uint32_t        add_param);
 
 
 swif_status_t   swif_rlc_decoder_generate_coding_coefs (
                                 swif_decoder_t* dec,
                                 uint32_t        key,
+                                uint8_t        dt,
                                 uint32_t        add_param);
 
 

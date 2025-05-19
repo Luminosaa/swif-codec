@@ -260,6 +260,7 @@ cdef extern from "swif_rlc_api.h":
      swif_status_t   swif_rlc_decoder_generate_coding_coefs (
                                 swif_decoder_t* dec,
                                 uint32_t        key,
+                                uint8_t         dt,
                                 uint32_t        add_param)
      swif_status_t   swif_rlc_decoder_reset_coding_window (
                                 swif_decoder_t*  dec)

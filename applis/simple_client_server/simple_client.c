@@ -17,6 +17,16 @@
  */
 static SOCKET init_socket(void);
 
+static inline bool is_source_packet(int32_t pkt_len)
+{
+    return pkt_len == (sizeof(source_fpi_t) + SYMBOL_SIZE);
+}
+
+static inline bool is_repair_packet(int32_t pkt_len)
+{
+    return pkt_len == (sizeof(repair_fpi_t) + SYMBOL_SIZE);
+}
+
 /**
  * This function receives packets on the incoming UDP socket.
  * It allocates a buffer of size *len and updates the pkt/len arguments with what
@@ -62,10 +72,12 @@ int main(int argc, char *argv[])
     uint32_t tot_enc; /* total number of encoding symbols (i.e. source + repair) in the session */
     esi_t esi;        /* source symbol id */
     SOCKET so = INVALID_SOCKET; /* UDP socket for server => client communications */
-    char *pkt_with_fpi =
+    char *pkt =
         NULL; /* buffer containing a fixed size packet plus a header consisting only of the FPI */
     fec_oti_t *fec_oti = NULL; /* FEC Object Transmission Information as sent to the client */
-    repair_fpi_t *fpi;         /* header (FEC Payload Information) for source and repair symbols */
+    repair_fpi_t *repair_fpi =
+        NULL; /* header (FEC Payload Information) for source and repair symbols */
+    source_fpi_t *source_fpi = NULL;
     uint32_t ret = -1;
     int32_t len;             /* len of the received packet */
     uint32_t n_received = 0; /* number of symbols (source or repair) received so far */
@@ -158,9 +170,8 @@ int main(int argc, char *argv[])
     /*
      * submit each fresh symbol to the library ASAP, upon reception.
      */
-    while((ret = get_next_pkt(so, (void **)&pkt_with_fpi, &len)) == SWIF_STATUS_OK)
+    while((ret = get_next_pkt(so, (void **)&pkt, &len)) == SWIF_STATUS_OK)
     {
-        uint16_t is_source;       /* 1 if source, 0 if repair */
         uint16_t repair_key;      /* only meaningful in case of a repair */
         uint16_t dt_nss, dt, nss; /* only meaningful in case of a repair */
         esi_t esi; /* esi of a source symbol, or esi of the first source symbol of the encoding
@@ -170,31 +181,20 @@ int main(int argc, char *argv[])
 
         /* OK, new packet received... and we know it'a fresh packet (no duplication here) */
         n_received++;
-        fpi = (repair_fpi_t *)pkt_with_fpi;
-        is_source = ntohs(fpi->is_source);
-        repair_key = ntohs(fpi->repair_key);
-        dt_nss = ntohs(fpi->dt_nss);
-        dt = dt_nss >> 12;     // dt is the upper 4 bits
-        nss = dt_nss & 0x0FFF; // nss is the lower 12 bits
-        esi = ntohl(fpi->esi);
-        if(esi > tot_enc)
-        { /* a sanity check, in case... */
-            fprintf(stderr, "Error, invalid esi=%u received in a packet's FPI\n", esi);
-            ret = -1;
-            goto end;
-        }
-        if(is_source != 0 && is_source != 1)
+
+        if(is_source_packet(len))
         {
-            fprintf(stderr, "Error, bad is_source=%u received in the packet's FPI\n", is_source);
-            ret = -1;
-            goto end;
-        }
-        printf("%05d => receiving symbol esi=%u (%s), key=%u, nss=%u\n", n_received, esi,
-               (is_source) ? "src" : "repair", repair_key, nss);
-        if(is_source)
-        {
-            /* remember that we received this source symbol */
-            src_symbols_tab[esi] = pkt_with_fpi + sizeof(repair_fpi_t); /* remember */
+            source_fpi = (source_fpi_t *)(pkt + SYMBOL_SIZE);
+            esi = ntohl(source_fpi->esi);
+            printf("Source symbol received, len=%d, esi=%u\n", len, esi);
+
+            if(esi >= tot_src)
+            {
+                fprintf(stderr, "Error, esi=%u is out of range (tot_src=%u)\n", esi, tot_src);
+                ret = -1;
+                goto end;
+            }
+            src_symbols_tab[esi] = pkt; /* remember */
             src_symbols_status_tab[esi] = SRC_SYMBOL_STATUS_RECEIVED;
             src_symbols_allocated[esi] = true;
             if(swif_decoder_decode_with_new_source_symbol(ses, src_symbols_tab[esi], esi) !=
@@ -205,10 +205,24 @@ int main(int argc, char *argv[])
                 goto end;
             }
         }
-        else
+        else if(is_repair_packet(len))
         {
+            repair_fpi = (repair_fpi_t *)pkt;
+            repair_key = ntohs(repair_fpi->repair_key);
+            dt_nss = ntohs(repair_fpi->dt_nss);
+            dt = dt_nss >> 12;     // dt is the upper 4 bits
+            nss = dt_nss & 0x0FFF; // nss is the lower 12 bits
+            esi = ntohl(repair_fpi->esi);
+            printf("Repair symbol received, len=%d, repair_key=%u, dt=%u, nss=%u, esi=%u\n", len,
+                   repair_key, dt, nss, esi);
+            if(esi >= tot_src)
+            {
+                fprintf(stderr, "Error, esi=%u is out of range (tot_src=%u)\n", esi, tot_src);
+                ret = -1;
+                goto end;
+            }
             /* remember that we received this repair symbol */
-            repair_symbols_tab[rep_idx] = pkt_with_fpi + sizeof(repair_fpi_t); /* remember */
+            repair_symbols_tab[rep_idx] = pkt + sizeof(repair_fpi_t); /* remember */
 
             /* a bit more complex, it's a repair symbol: specify the coding window, generate the
              * coding coefficients, then submit the repair symbol  */
@@ -242,8 +256,12 @@ int main(int argc, char *argv[])
             }
             rep_idx++;
         }
-        len = SYMBOL_SIZE +
-              sizeof(repair_fpi_t); /* make sure len contains the size of the expected packet */
+        else
+        {
+            fprintf(stderr, "Error, can't identificate if the packet is source or repair\n");
+            ret = -1;
+            goto end;
+        }
     }
     /* print reception an   d decoding final statistics */
     uint32_t n_src_recvd = 0;   /* number source symbols received */
@@ -296,7 +314,7 @@ end:
             {
                 if(src_symbols_status_tab[esi] == SRC_SYMBOL_STATUS_RECEIVED)
                 {
-                    free((char *)src_symbols_tab[esi] - sizeof(repair_fpi_t));
+                    free((char *)src_symbols_tab[esi]);
                 }
                 else if(src_symbols_status_tab[esi] == SRC_SYMBOL_STATUS_DECODED)
                 {
@@ -359,9 +377,8 @@ static SOCKET init_socket()
 static swif_status_t get_next_pkt(SOCKET so, void **pkt, int32_t *len)
 {
     static bool first_call = true;
-    int32_t saved_len = *len; /* save it, in case we need to do several calls to recvfrom */
 
-    if((*pkt = malloc(saved_len)) == NULL)
+    if((*pkt = malloc(sizeof(repair_fpi_t) + SYMBOL_SIZE)) == NULL)
     {
         fprintf(stderr, "Error, no memory (malloc failed for p)\n");
         return SWIF_STATUS_ERROR;
@@ -371,7 +388,7 @@ static swif_status_t get_next_pkt(SOCKET so, void **pkt, int32_t *len)
         /* the first time we must be in blocking mode since the flow may be launched after a few
          * seconds... */
         first_call = false;
-        *len = recvfrom(so, *pkt, saved_len, 0, NULL, NULL);
+        *len = recvfrom(so, *pkt, sizeof(repair_fpi_t) + SYMBOL_SIZE, 0, NULL, NULL);
         if(*len < 0)
         {
             /* this is an anormal error, exit */
@@ -391,7 +408,7 @@ static swif_status_t get_next_pkt(SOCKET so, void **pkt, int32_t *len)
         return SWIF_STATUS_OK;
     }
     /* otherwise we are in non-blocking mode... */
-    *len = recvfrom(so, *pkt, saved_len, 0, NULL, NULL);
+    *len = recvfrom(so, *pkt, sizeof(repair_fpi_t) + SYMBOL_SIZE, 0, NULL, NULL);
     if(*len > 0)
     {
         if(VERBOSITY > 1)
@@ -402,7 +419,7 @@ static swif_status_t get_next_pkt(SOCKET so, void **pkt, int32_t *len)
     {
         /* no packet available, sleep a little bit and retry */
         SLEEP(200); /* (in milliseconds) */
-        *len = recvfrom(so, *pkt, saved_len, 0, NULL, NULL);
+        *len = recvfrom(so, *pkt, sizeof(repair_fpi_t) + SYMBOL_SIZE, 0, NULL, NULL);
         if(*len > 0)
         {
             if(VERBOSITY > 1)

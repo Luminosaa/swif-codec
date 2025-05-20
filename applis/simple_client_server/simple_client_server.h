@@ -83,7 +83,6 @@ typedef struct {
  * NB: all the fields MUST be in Network Endianess while sent over the network, so use htonl (resp. ntohl) at the sender (resp. receiver).
  */
 typedef struct {
-	uint16_t	is_source;	/* 1 if source, 0 if repair */
 	uint16_t	repair_key;	/* only meaningful in case of a repair */
 	uint16_t	dt_nss;		/* only meaningful in case of a repair */
 	esi_t		esi;		/* esi of a source symbol, or esi of the first source symbol of the encoding window in case of a repair */

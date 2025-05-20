@@ -113,7 +113,8 @@ int main(int argc, char *argv[])
     char *pkt_with_fpi =
         NULL; /* buffer containing a fixed size packet plus a header consisting only of the FPI */
     fec_oti_t fec_oti; /* FEC Object Transmission Information as sent to the client */
-    repair_fpi_t *fpi; /* header (FEC Payload Information) for source and repair symbols */
+    repair_fpi_t *repair_fpi; /* header (FEC Payload Information) for source and repair symbols */
+    source_fpi_t *source_fpi; /* header (FEC Payload Information) for source symbols */
     SOCKADDR_IN dst_host;
     uint32_t ret = -1;
 
@@ -225,14 +226,9 @@ int main(int argc, char *argv[])
             return ret;
         }
         /* prepend a header in network byte order */
-        fpi = (repair_fpi_t *)pkt_with_fpi;
-        fpi->is_source = htons(1);
-        fpi->repair_key = htons(0);          /* only meaningful in case of a repair */
-        uint16_t dt_nss = dt << 12 & 0xF000; // dt is the upper 4 bits
-        fpi->dt_nss = htons(dt_nss);
-        printf("SENDING dt_nss=%x, dt=%x, nss=%x\n", dt_nss, dt, 0);
-        fpi->esi = htonl(esi);
-        memcpy(pkt_with_fpi + sizeof(repair_fpi_t), enc_symbols_tab[idx], SYMBOL_SIZE);
+        source_fpi = (source_fpi_t *)(pkt_with_fpi + SYMBOL_SIZE);
+        source_fpi->esi = htonl(esi);
+        memcpy(pkt_with_fpi, enc_symbols_tab[idx], SYMBOL_SIZE);
         if(should_be_lost(loss_rate))
         {
             printf(" => src symbol %u is lost\n", esi);
@@ -248,7 +244,7 @@ int main(int argc, char *argv[])
             {
                 printf(" => sending src symbol %u\n", esi);
             }
-            if((ret = sendto(so, pkt_with_fpi, sizeof(repair_fpi_t) + SYMBOL_SIZE, 0,
+            if((ret = sendto(so, pkt_with_fpi, sizeof(source_fpi_t) + SYMBOL_SIZE, 0,
                              (SOCKADDR *)&dst_host, sizeof(dst_host))) == SOCKET_ERROR)
             {
                 fprintf(stderr, "Error, sendto() failed!\n");
@@ -311,14 +307,13 @@ int main(int argc, char *argv[])
                 cleanup(so, ses, enc_symbols_tab, tot_enc, pkt_with_fpi);
                 return ret;
             }
-            fpi = (repair_fpi_t *)pkt_with_fpi;
-            fpi->is_source = htons(0);
-            fpi->repair_key = htons(idx);
+            repair_fpi = (repair_fpi_t *)pkt_with_fpi;
+            repair_fpi->repair_key = htons(idx);
 
-            fpi->dt_nss = htons((dt << 12) | ((nss) & 0x0FFF)); // dt is the upper 4 bits
-            printf("SENDING dt_nss=%x, dt=%x, nss=%x\n", fpi->dt_nss, dt, nss);
+            repair_fpi->dt_nss = htons((dt << 12) | ((nss) & 0x0FFF)); // dt is the upper 4 bits
+            printf("SENDING dt_nss=%x, dt=%x, nss=%x\n", repair_fpi->dt_nss, dt, nss);
 
-            fpi->esi = htonl(first);
+            repair_fpi->esi = htonl(first);
             memcpy(pkt_with_fpi + sizeof(repair_fpi_t), enc_symbols_tab[idx], SYMBOL_SIZE);
             if(should_be_lost(loss_rate))
             {

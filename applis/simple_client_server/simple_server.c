@@ -63,9 +63,9 @@ static void cleanup(
 
 int main(int argc, char *argv[])
 {
-    if(argc < 4)
+    if(argc < 5)
     {
-        fprintf(stderr, "Usage: %s <loss_rate> <encoding_window_size> <code_rate>\n", argv[0]);
+        fprintf(stderr, "Usage: %s <loss_rate> <encoding_window_size> <code_rate> <dt>\n", argv[0]);
         return -1;
     }
 
@@ -92,6 +92,15 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Error: invalid code rate (%f). Must be > 0.0 and <= 1.0.\n", code_rate);
         return -1;
     }
+
+    // Parse dt
+    uint32_t dt = atoi(argv[4]);
+    if(dt < 0 || dt > 15)
+    {
+        fprintf(stderr, "Error: invalid dt (%u). Must be >= 0 and <= 15.\n", dt);
+        return -1;
+    }
+
     swif_codepoint_t codepoint; /* identifier of the codec to use */
     swif_encoder_t *ses = NULL;
     void **enc_symbols_tab =
@@ -104,7 +113,7 @@ int main(int argc, char *argv[])
     char *pkt_with_fpi =
         NULL; /* buffer containing a fixed size packet plus a header consisting only of the FPI */
     fec_oti_t fec_oti; /* FEC Object Transmission Information as sent to the client */
-    repair_fpi_t *fpi;        /* header (FEC Payload Information) for source and repair symbols */
+    repair_fpi_t *fpi; /* header (FEC Payload Information) for source and repair symbols */
     SOCKADDR_IN dst_host;
     uint32_t ret = -1;
 
@@ -218,8 +227,10 @@ int main(int argc, char *argv[])
         /* prepend a header in network byte order */
         fpi = (repair_fpi_t *)pkt_with_fpi;
         fpi->is_source = htons(1);
-        fpi->repair_key = htons(0); /* only meaningful in case of a repair */
-        fpi->nss = htons(0);        /* only meaningful in case of a repair */
+        fpi->repair_key = htons(0);          /* only meaningful in case of a repair */
+        uint16_t dt_nss = dt << 12 & 0xF000; // dt is the upper 4 bits
+        fpi->dt_nss = htons(dt_nss);
+        printf("SENDING dt_nss=%x, dt=%x, nss=%x\n", dt_nss, dt, 0);
         fpi->esi = htonl(esi);
         memcpy(pkt_with_fpi + sizeof(repair_fpi_t), enc_symbols_tab[idx], SYMBOL_SIZE);
         if(should_be_lost(loss_rate))
@@ -249,16 +260,17 @@ int main(int argc, char *argv[])
         /* perform a short usleep() to slow down transmissions and avoid UDP socket saturation at
          * the receiver. Note that the true solution consists in adding some rate control mechanism
          * here... */
-        usleep(100);
+        usleep(300);
         repair_counter += 1.0 / interval_between_repairs;
         idx++;
-        while((repair_counter >= 1.0) && (idx < tot_enc)){
+        while((repair_counter >= 1.0) && (idx < tot_enc))
+        {
             repair_counter -= 1.0;
             esi_t first;
             esi_t last;
             uint32_t nss;
             /* the index is the repair_key */
-            if(swif_encoder_generate_coding_coefs(ses, idx, 15, 0) != SWIF_STATUS_OK)
+            if(swif_encoder_generate_coding_coefs(ses, idx, dt, 0) != SWIF_STATUS_OK)
             {
                 fprintf(stderr,
                         "Error, swif_decoder_generate_coding_coefs() failed for repair_key=%u\n",
@@ -302,7 +314,10 @@ int main(int argc, char *argv[])
             fpi = (repair_fpi_t *)pkt_with_fpi;
             fpi->is_source = htons(0);
             fpi->repair_key = htons(idx);
-            fpi->nss = htons(nss);
+
+            fpi->dt_nss = htons((dt << 12) | ((nss) & 0x0FFF)); // dt is the upper 4 bits
+            printf("SENDING dt_nss=%x, dt=%x, nss=%x\n", fpi->dt_nss, dt, nss);
+
             fpi->esi = htonl(first);
             memcpy(pkt_with_fpi + sizeof(repair_fpi_t), enc_symbols_tab[idx], SYMBOL_SIZE);
             if(should_be_lost(loss_rate))
@@ -332,7 +347,7 @@ int main(int argc, char *argv[])
             /* Perform a short usleep() to slow down transmissions and avoid UDP socket saturation
              * at the receiver. Note that the true solution consists in adding some rate control
              * mechanism here, like a leaky or token bucket. */
-            usleep(100);
+            usleep(300);
             idx++;
         }
     }

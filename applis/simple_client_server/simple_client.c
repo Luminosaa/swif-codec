@@ -162,7 +162,7 @@ int main(int argc, char *argv[])
     {
         uint16_t is_source;  /* 1 if source, 0 if repair */
         uint16_t repair_key; /* only meaningful in case of a repair */
-        uint16_t nss;        /* only meaningful in case of a repair */
+        uint16_t dt_nss, dt, nss;        /* only meaningful in case of a repair */
         esi_t esi; /* esi of a source symbol, or esi of the first source symbol of the encoding
                       window in case of a repair */
         uint32_t rep_idx = 0; /* index in the repair symbol tab */
@@ -173,7 +173,9 @@ int main(int argc, char *argv[])
         fpi = (repair_fpi_t *)pkt_with_fpi;
         is_source = ntohs(fpi->is_source);
         repair_key = ntohs(fpi->repair_key);
-        nss = ntohs(fpi->nss);
+        dt_nss = ntohs(fpi->dt_nss);
+        dt = dt_nss >> 12; // dt is the upper 4 bits
+        nss = dt_nss & 0x0FFF; // nss is the lower 12 bits
         esi = ntohl(fpi->esi);
         if(esi > tot_enc)
         { /* a sanity check, in case... */
@@ -225,7 +227,7 @@ int main(int argc, char *argv[])
                     goto end;
                 }
             }
-            if(swif_decoder_generate_coding_coefs(ses, repair_key, 15, 0) != SWIF_STATUS_OK)
+            if(swif_decoder_generate_coding_coefs(ses, repair_key, dt, 0) != SWIF_STATUS_OK)
             {
                 fprintf(stderr, "Error, swif_decoder_generate_coding_coefs() failed\n");
                 ret = -1;

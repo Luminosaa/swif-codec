@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
     char *pkt_with_fpi =
         NULL; /* buffer containing a fixed size packet plus a header consisting only of the FPI */
     fec_oti_t *fec_oti = NULL; /* FEC Object Transmission Information as sent to the client */
-    repair_fpi_t *fpi;                /* header (FEC Payload Information) for source and repair symbols */
+    repair_fpi_t *fpi;         /* header (FEC Payload Information) for source and repair symbols */
     uint32_t ret = -1;
     int32_t len;             /* len of the received packet */
     uint32_t n_received = 0; /* number of symbols (source or repair) received so far */
@@ -160,9 +160,9 @@ int main(int argc, char *argv[])
      */
     while((ret = get_next_pkt(so, (void **)&pkt_with_fpi, &len)) == SWIF_STATUS_OK)
     {
-        uint16_t is_source;  /* 1 if source, 0 if repair */
-        uint16_t repair_key; /* only meaningful in case of a repair */
-        uint16_t dt_nss, dt, nss;        /* only meaningful in case of a repair */
+        uint16_t is_source;       /* 1 if source, 0 if repair */
+        uint16_t repair_key;      /* only meaningful in case of a repair */
+        uint16_t dt_nss, dt, nss; /* only meaningful in case of a repair */
         esi_t esi; /* esi of a source symbol, or esi of the first source symbol of the encoding
                       window in case of a repair */
         uint32_t rep_idx = 0; /* index in the repair symbol tab */
@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
         is_source = ntohs(fpi->is_source);
         repair_key = ntohs(fpi->repair_key);
         dt_nss = ntohs(fpi->dt_nss);
-        dt = dt_nss >> 12; // dt is the upper 4 bits
+        dt = dt_nss >> 12;     // dt is the upper 4 bits
         nss = dt_nss & 0x0FFF; // nss is the lower 12 bits
         esi = ntohl(fpi->esi);
         if(esi > tot_enc)
@@ -264,7 +264,6 @@ int main(int argc, char *argv[])
             if(src_symbols_status_tab[esi] != SRC_SYMBOL_STATUS_MISSING)
             {
                 dump_buffer_32(src_symbols_tab[esi], 1);
-                
             }
             else
             {

@@ -281,7 +281,7 @@ int main(int argc, char *argv[])
             printf("src[%u]= ", esi);
             if(src_symbols_status_tab[esi] != SRC_SYMBOL_STATUS_MISSING)
             {
-                dump_buffer_32(src_symbols_tab[esi], 1);
+                dump_buffer_32(src_symbols_tab[esi], 4);
             }
             else
             {

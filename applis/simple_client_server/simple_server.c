@@ -256,7 +256,7 @@ int main(int argc, char *argv[])
         /* perform a short usleep() to slow down transmissions and avoid UDP socket saturation at
          * the receiver. Note that the true solution consists in adding some rate control mechanism
          * here... */
-        usleep(300);
+        usleep(500);
         repair_counter += 1.0 / interval_between_repairs;
         idx++;
         while((repair_counter >= 1.0) && (idx < tot_enc))
@@ -342,7 +342,7 @@ int main(int argc, char *argv[])
             /* Perform a short usleep() to slow down transmissions and avoid UDP socket saturation
              * at the receiver. Note that the true solution consists in adding some rate control
              * mechanism here, like a leaky or token bucket. */
-            usleep(300);
+            usleep(500);
             idx++;
         }
     }

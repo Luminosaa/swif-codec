@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # filepath: /home/thomas/Desktop/UGA/M1/Internship/swif-codec/test_performance.sh
-
+CR=0.25
+DT=15
 # Define the range of x (loss rate) and y (window size)
 loss_rates=$(seq 0 0.02 1) # x values: from 1 to 0 with a step of 0.05
 window_sizes=(2 5 8 10 15 20) # y values: different window sizes
@@ -32,7 +33,7 @@ for window_size in "${window_sizes[@]}"; do
         sleep 0.5
 
         # Start the server with the current loss rate and window size
-        ./applis/simple_client_server/simple_server $loss_rate $window_size 0.33 > /dev/null 2> /dev/null &
+        ./applis/simple_client_server/simple_server $loss_rate $window_size $CR $DT > /dev/null 2> /dev/null &
 
         # Wait for the client to finish
         wait $client_pid
@@ -48,5 +49,5 @@ for window_size in "${window_sizes[@]}"; do
     done
 done
 
-python3 plot_results.py
+python3 plot_resultsCR.py $CR
 echo "Performance test completed. Results saved to $output_file and plot saved to performance_plot.png."

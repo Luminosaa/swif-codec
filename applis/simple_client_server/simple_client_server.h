@@ -48,7 +48,7 @@
 					 *	1 : main traces
 					 *	2 : full traces with packet dumps */
 #define DEST_IP		"127.0.0.1"	/* Destination IPv4 address */
-#define DEST_PORT	10978		/* Destination port (UDP) */
+#define DEST_PORT	10979		/* Destination port (UDP) */
 
 
 /*
